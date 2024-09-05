@@ -20,3 +20,9 @@ You can use this package by enabling the copr repository at [abn/wifiman-desktop
 dnf copr enable abn/wifiman-desktop
 dnf install wifiman-desktop
 ```
+
+Once installed you can enable and start the daemon using the following command, then launch the application.
+
+```sh
+systemctl enable --now wifiman-desktop.service
+```
