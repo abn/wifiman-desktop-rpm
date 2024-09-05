@@ -4,7 +4,7 @@
 
 Name:     wifiman-desktop
 Version:  0.3.0
-Release:  1
+Release:  2
 Summary:  Discover devices and access Teleport VPNs
 License:  MIT
 Vendor:   Ubiquiti Inc. <monitoring@wifiman.com>
@@ -137,6 +137,9 @@ esac
 %attr(644, root, root) %{_unitdir}/%{name}.service
 
 %changelog
+* Thu Sep 05 2024 Arun Babu Neelicattu <arun.neelicattu@gmail.com> 0.3.0-2
+- tito: fetch sources for build (arun.neelicattu@gmail.com)
+
 * Thu Sep 05 2024 Arun Babu Neelicattu <arun.neelicattu@gmail.com> 0.3.0-1
 - Release 0.30.0 package built with tito
 
