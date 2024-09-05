@@ -7,6 +7,12 @@ This repository holds the RPM package source for [wifiman-desktop](https://www.u
 > WiFiman is here to save your home or office network from sluggish surfing, endless buffering, and congested data 
 > channels.
 
+> [!NOTE]  
+> This is a wrapper package of the WiFiman Desktop releases for Ubuntu available [here](https://www.ui.com/download/app/wifiman-desktop)
+> and is in no way affliated with or maintained by [Ubiquity Inc](https://ui.com/) for any application support or questions please see
+> [here](https://help.ui.com/hc/en-us).
+
+
 ## Usage
 You can use this package by enabling the copr repository at [abn/wifiman-desktop](https://copr.fedorainfracloud.org/coprs/abn/wifiman-desktop/) as described [here](https://fedorahosted.org/copr/wiki/HowToEnableRepo).
 
