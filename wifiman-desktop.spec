@@ -3,25 +3,14 @@
 %define debug_package %{nil}
 
 Name:     wifiman-desktop
-Version:  0.3.0
-Release:  3
+Version:  1.1.0
+Release:  1
 Summary:  Discover devices and access Teleport VPNs
 License:  MIT
 Vendor:   Ubiquiti Inc. <monitoring@wifiman.com>
 URL:      https://wifiman.com/
 
-%ifarch x86_64
-Source0:  https://desktop.wifiman.com/wifiman-desktop-%{version}-linux-amd64.deb
-Source1:  https://desktop.wifiman.com/wifiman-desktop-%{version}-linux-arm64.deb
-%endif
-
-%ifarch aarch64
-Source0:  https://desktop.wifiman.com/wifiman-desktop-%{version}-linux-arm64.deb
-Source1:  https://desktop.wifiman.com/wifiman-desktop-%{version}-linux-amd64.deb
-%endif
-
-Patch0:   0001-fix-desktop-exec.patch
-Patch1:   0002-fix-service-exec.patch
+Source1:  https://desktop.ea.wifiman.com/wifiman-desktop-%{version}-amd64.deb
 
 BuildRequires: binutils
 BuildRequires: desktop-file-utils
@@ -30,19 +19,12 @@ BuildRequires: systemd-units
 BuildRequires: tar
 BuildRequires: xz
 
-Requires: gtk3
-Requires: libsecret
-Requires: libuuid
-Requires: at-spi2-core
-Requires: xdg-utils
-Requires: libXtst
-Requires: %{_libdir}/libXss.so.1
-Requires: nss
-Requires: libnotify
-Requires: wireguard-tools
+Requires: net-tools
+Requires: iw
 Requires: systemd
-
-Recommends: libappindicator-gtk3
+Requires: libappindicator-gtk3
+Requires: webkit2gtk4.0
+Requires: gtk3
 
 %description
 WiFiman is here to save your home or office network from sluggish surfing, endless buffering, and congested data channels.
@@ -56,87 +38,80 @@ With this free-to-use (and ad-free) app you can:
 
 %prep
 %setup -cT
-ar x %{SOURCE0}
-tar xf data.tar.xz
-%patch -P 0 -p0
-%patch -P 1 -p0
 
 %build
+ar x %{SOURCE1}
+tar xf data.tar.gz
 
 %install
-install -D opt/WiFiman\ Desktop/service/wifiman-desktop.service %{buildroot}/%{_unitdir}/%{name}.service
+install -m 0755 -vd %{buildroot}%{_datadir}
+cp -R usr/share/* %{buildroot}%{_datadir}/
 
-rm -f opt/WiFiman\ Desktop/service/wifiman-desktop.service
-rm -rf opt/WiFiman\ Desktop/scripts
+install -m 0755 -vd %{buildroot}%{_bindir}
+install -m 0755 -vp usr/bin/wi-fiman-desktop %{buildroot}%{_bindir}/
 
-install -d %{buildroot}/opt
-cp -R opt/WiFiman\ Desktop %{buildroot}/opt/wifiman-desktop
-
-rm -rf usr/share/doc
-cp -R usr/share %{buildroot}/%{_datarootdir}
-
-# this should really be using user runtime dir, but this seems to be hardcoded in the electron app
-install -d -m 777 %{buildroot}/opt/wifiman-desktop/tmp
+install -m 0755 -vd %{buildroot}%{_prefix}/lib/wi-fiman-desktop
+install -m 0755 -vp usr/lib/wi-fiman-desktop/wg %{buildroot}%{_prefix}/lib/wi-fiman-desktop/
+install -m 0755 -vp usr/lib/wi-fiman-desktop/wg-quick %{buildroot}%{_prefix}/lib/wi-fiman-desktop/
+install -m 0755 -vp usr/lib/wi-fiman-desktop/wifiman-desktopd %{buildroot}%{_prefix}/lib/wi-fiman-desktop/
+install -m 0755 -vp usr/lib/wi-fiman-desktop/wireguard-go %{buildroot}%{_prefix}/lib/wi-fiman-desktop/
+install -m 0644 -vp usr/lib/wi-fiman-desktop/wifiman-desktop.service %{buildroot}%{_prefix}/lib/wi-fiman-desktop/%{name}.service
+install -m 0644 -vp usr/lib/wi-fiman-desktop/.env %{buildroot}%{_prefix}/lib/wi-fiman-desktop/
 
 %check
-desktop-file-validate %{buildroot}/%{_datadir}/applications/%{name}.desktop
+desktop-file-validate %{buildroot}%{_datadir}/applications/wi-fiman-desktop.desktop
 
 %post
+cp %{_prefix}/lib/wi-fiman-desktop/%{name}.service %{_unitdir}/%{name}.service
 %systemd_post %{name}.service
-%{__ln_s} -f /opt/wifiman-desktop/service/.env %{_sysconfdir}/%{name}
-%{__ln_s} -f /opt/wifiman-desktop/wifiman-desktop %{_bindir}/wifiman-desktop
-/bin/touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
-update-mime-database /usr/share/mime &>/dev/null
-update-desktop-database /usr/share/applications &>/dev/null
+
+update-mime-database /usr/share/mime &> /dev/null || :
+update-desktop-database /usr/share/applications &> /dev/null || :
+
+touch --no-create %{_datadir}/icons/hicolor &> /dev/null || :
+gtk-update-icon-cache %{_datadir}/icons/hicolor &> /dev/null || :
 
 %preun
-pkill -SIGTERM -f /opt/wifiman-desktop/wifiman-desktop || :
+pkill -SIGTERM -f %{_bindir}/wi-fiman-desktop &> /dev/null || :
 %systemd_preun %{name}.service
 
 %postun
+if [ $1 -eq 0 ] ; then
+  rm -f %{_unitdir}/%{name}.service
+fi
 %systemd_postun_with_restart %{name}.service
 
 if [ $1 -eq 0 ] ; then
-    /bin/touch --no-create %{_datadir}/icons/hicolor &>/dev/null
-    /usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+  update-mime-database /usr/share/mime &> /dev/null || :
+  update-desktop-database /usr/share/applications &> /dev/null || :
+
+  touch --no-create %{_datadir}/icons/hicolor &> /dev/null || :
+  gtk-update-icon-cache %{_datadir}/icons/hicolor &> /dev/null || :
 fi
 
-case "$1" in
-  0) # last one out put out the lights
-    rm -f %{_sysconfdir}/%{name}
-    rm -f %{_bindir}/wifiman-desktop
-    rm -rf /opt/wifiman-desktop
-  ;;
-esac
-
-%posttrans
-/usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+# Only perform cleanup if this is a complete removal, not just an upgrade
+if [ $1 -eq 0 ]; then
+    rm -rf %{_prefix}/lib/wi-fiman-desktop/
+    for homedir in /home/*; do
+        if [ -d "$homedir/.local/share/ui.wifiman.desktop/" ]; then
+            echo "Removing $homedir/.local/share/ui.wifiman.desktop/assets/devices/"
+            rm -rf "$homedir/.local/share/ui.wifiman.desktop/assets/devices/"
+        fi
+    done
+fi
 
 %files
 %defattr(-,root,root,-)
-%dir %attr(777, root, root) /opt/wifiman-desktop/tmp
-%attr(644, root, root) /opt/wifiman-desktop/assets/devices/*.png
-%attr(644, root, root) /opt/wifiman-desktop/assets/uidb.json
-%attr(644, root, root) /opt/wifiman-desktop/locales/*.pak
-%attr(644, root, root) /opt/wifiman-desktop/resources/app.asar
-%attr(644, root, root) /opt/wifiman-desktop/service/.env
-%attr(755, root, root) /opt/wifiman-desktop/service/wg
-%attr(755, root, root) /opt/wifiman-desktop/service/wg-quick
-%attr(755, root, root) /opt/wifiman-desktop/service/wifiman-desktopd
-%attr(755, root, root) /opt/wifiman-desktop/service/wireguard-go
-%attr(755, root, root) /opt/wifiman-desktop/chrome-sandbox
-%attr(755, root, root) /opt/wifiman-desktop/chrome_crashpad_handler
-%attr(644, root, root) /opt/wifiman-desktop/*.dat
-%attr(755, root, root) /opt/wifiman-desktop/lib*.so
-%attr(755, root, root) /opt/wifiman-desktop/lib*.so.*
-%attr(644, root, root) /opt/wifiman-desktop/LICENSE*
-%attr(644, root, root) /opt/wifiman-desktop/*.bin
-%attr(644, root, root) /opt/wifiman-desktop/*.pak
-%attr(644, root, root) /opt/wifiman-desktop/*.json
-%attr(755, root, root) /opt/wifiman-desktop/wifiman-desktop
-%attr(644, root, root) %{_datadir}/applications/%{name}.desktop
-%attr(644, root, root) %{_datadir}/icons/hicolor/*/apps/%{name}.png
-%attr(644, root, root) %{_unitdir}/%{name}.service
+%dir %attr(755, root, roo) %{_prefix}/lib/wi-fiman-desktop
+%attr(644, root, root) %{_prefix}/lib/wi-fiman-desktop/.env
+%attr(755, root, root) %{_prefix}/lib/wi-fiman-desktop/wg
+%attr(755, root, root) %{_prefix}/lib/wi-fiman-desktop/wg-quick
+%attr(755, root, root) %{_prefix}/lib/wi-fiman-desktop/wifiman-desktopd
+%attr(644, root, root) %{_prefix}/lib/wi-fiman-desktop/wifiman-desktop.service
+%attr(755, root, root) %{_prefix}/lib/wi-fiman-desktop/wireguard-go
+%attr(755, root, root) %{_bindir}/wi-fiman-desktop
+%attr(644, root, root) %{_datadir}/applications/wi-fiman-desktop.desktop
+%attr(644, root, root) %{_datadir}/icons/hicolor/*/apps/wi-fiman-desktop.png
 
 %changelog
 * Thu Sep 05 2024 Arun Babu Neelicattu <arun.neelicattu@gmail.com> 0.3.0-3
@@ -147,4 +122,3 @@ esac
 
 * Thu Sep 05 2024 Arun Babu Neelicattu <arun.neelicattu@gmail.com> 0.3.0-1
 - Release 0.30.0 package built with tito
-
